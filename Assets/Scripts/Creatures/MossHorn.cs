@@ -76,8 +76,7 @@ namespace Driftworld
             visual = new GameObject("Visual").transform;
             visual.SetParent(transform, false);
 
-            bodyMaterial = new Material(Shader.Find("Standard"));
-            bodyMaterial.color = IsElder ? new Color(0.32f, 0.36f, 0.2f) : new Color(0.42f, 0.48f, 0.28f);
+            bodyMaterial = Diag.SafeMaterial(IsElder ? new Color(0.32f, 0.36f, 0.2f) : new Color(0.42f, 0.48f, 0.28f));
 
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
             body.name = "Body";
@@ -99,8 +98,7 @@ namespace Driftworld
             skull.GetComponent<Renderer>().material = bodyMaterial;
             Object.Destroy(skull.GetComponent<Collider>());
 
-            var hornMat = new Material(Shader.Find("Standard"));
-            hornMat.color = new Color(0.75f, 0.7f, 0.6f);
+            var hornMat = Diag.SafeMaterial(new Color(0.75f, 0.7f, 0.6f));
             for (int i = -1; i <= 1; i += 2)
             {
                 var horn = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -119,16 +117,14 @@ namespace Driftworld
             barGroup.SetParent(transform, false);
             barGroup.localPosition = new Vector3(0f, 2.9f * s, 0f);
 
-            var bgMat = new Material(Shader.Find("Standard"));
-            bgMat.color = new Color(0.08f, 0.08f, 0.08f);
+            var bgMat = Diag.SafeMaterial(new Color(0.08f, 0.08f, 0.08f));
             var bg = GameObject.CreatePrimitive(PrimitiveType.Cube);
             bg.transform.SetParent(barGroup, false);
             bg.transform.localScale = new Vector3(2.2f, 0.18f, 0.06f);
             bg.GetComponent<Renderer>().material = bgMat;
             Object.Destroy(bg.GetComponent<Collider>());
 
-            var fillMat = new Material(Shader.Find("Standard"));
-            fillMat.color = new Color(0.45f, 0.8f, 0.35f);
+            var fillMat = Diag.SafeMaterial(new Color(0.45f, 0.8f, 0.35f));
             barFill = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
             barFill.SetParent(barGroup, false);
             barFill.localScale = new Vector3(2.1f, 0.12f, 0.08f);

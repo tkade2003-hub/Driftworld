@@ -224,8 +224,7 @@ namespace Driftworld
             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             go.name = "WindSpear";
             go.transform.localScale = new Vector3(0.32f, 0.32f, 0.32f);
-            var mat = new Material(Shader.Find("Standard"));
-            mat.color = new Color(0.55f, 0.95f, 1f);
+            var mat = Diag.SafeMaterial(new Color(0.55f, 0.95f, 1f));
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", new Color(0.4f, 0.9f, 1f) * 1.8f);
             go.GetComponent<Renderer>().material = mat;

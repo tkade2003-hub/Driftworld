@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Driftworld
@@ -15,22 +16,41 @@ namespace Driftworld
         {
             if (Object.FindAnyObjectByType<PlayerController>() != null) return;
 
-            RenderSettings.ambientLight = new Color(0.55f, 0.65f, 0.75f);
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = 45f;
-            RenderSettings.fogEndDistance = 170f;
-            RenderSettings.fogColor = new Color(0.62f, 0.78f, 0.85f);
+            try
+            {
+                Diag.SetStep("world settings");
+                RenderSettings.ambientLight = new Color(0.55f, 0.65f, 0.75f);
+                RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.Linear;
+                RenderSettings.fogStartDistance = 45f;
+                RenderSettings.fogEndDistance = 170f;
+                RenderSettings.fogColor = new Color(0.62f, 0.78f, 0.85f);
 
-            MakeSun();
-            MakeIslandA();
-            MakeIslandB();
-            WindLane lane = MakeWindLane();
-            GameObject hero = MakeHero();
-            MakeCreatures();
-            MakeCamera(hero);
-            MakeRippleCanvas(hero.GetComponent<DragInput>());
-            MakeCombatHud(hero);
+                Diag.SetStep("sun");
+                MakeSun();
+                Diag.SetStep("island A");
+                MakeIslandA();
+                Diag.SetStep("island B");
+                MakeIslandB();
+                Diag.SetStep("wind lane");
+                WindLane lane = MakeWindLane();
+                Diag.SetStep("hero");
+                GameObject hero = MakeHero();
+                Diag.SetStep("creatures");
+                MakeCreatures();
+                Diag.SetStep("camera");
+                MakeCamera(hero);
+                Diag.SetStep("ripple canvas");
+                MakeRippleCanvas(hero.GetComponent<DragInput>());
+                Diag.SetStep("combat hud");
+                MakeCombatHud(hero);
+                Diag.SetStep("ready");
+            }
+            catch (System.Exception ex)
+            {
+                Diag.Fail(ex);
+                Debug.LogException(ex);
+            }
         }
 
         private static void MakeCreatures()
@@ -53,6 +73,14 @@ namespace Driftworld
 
         private static void MakeCombatHud(GameObject hero)
         {
+            // uGUI buttons receive no touches at all without an EventSystem.
+            if (Object.FindAnyObjectByType<EventSystem>() == null)
+            {
+                var es = new GameObject("EventSystem");
+                es.AddComponent<EventSystem>();
+                es.AddComponent<StandaloneInputModule>();
+            }
+
             var combat = hero.GetComponent<PlayerCombat>();
             var harvester = hero.GetComponent<Harvester>();
             var hudGo = new GameObject("CombatHud");
@@ -67,9 +95,7 @@ namespace Driftworld
 
         private static Material Mat(Color color)
         {
-            var m = new Material(Shader.Find("Standard"));
-            m.color = color;
-            return m;
+            return Diag.SafeMaterial(color);
         }
 
         private static GameObject Box(string name, Vector3 pos, Vector3 scale, Material mat)
