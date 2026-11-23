@@ -27,8 +27,42 @@ namespace Driftworld
             MakeIslandB();
             WindLane lane = MakeWindLane();
             GameObject hero = MakeHero();
+            MakeCreatures();
             MakeCamera(hero);
             MakeRippleCanvas(hero.GetComponent<DragInput>());
+            MakeCombatHud(hero);
+        }
+
+        private static void MakeCreatures()
+        {
+            // Island A: three commons near the start so the first fight is
+            // seconds away. Island B: one common and the elder.
+            MakeCreature(new Vector3(5f, 0f, 7f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 1);
+            MakeCreature(new Vector3(-4f, 0f, -8f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 2);
+            MakeCreature(new Vector3(10f, 0f, -6f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 3);
+            MakeCreature(new Vector3(53f, -6f, -5f), -6f, false, new Vector3(58f, -6f, 0f), new Vector2(11f, 11f), 4);
+            MakeCreature(new Vector3(60f, -6f, 4f), -6f, true, new Vector3(58f, -6f, 0f), new Vector2(11f, 11f), 5);
+        }
+
+        private static void MakeCreature(Vector3 pos, float groundY, bool elder, Vector3 islandCenter, Vector2 islandHalf, int index)
+        {
+            var go = new GameObject(elder ? "ElderMossHorn" : "MossHorn");
+            var creature = go.AddComponent<MossHorn>();
+            creature.Configure(pos, groundY, elder, islandCenter, islandHalf, index);
+        }
+
+        private static void MakeCombatHud(GameObject hero)
+        {
+            var combat = hero.GetComponent<PlayerCombat>();
+            var harvester = hero.GetComponent<Harvester>();
+            var hudGo = new GameObject("CombatHud");
+            var hud = hudGo.AddComponent<CombatHud>();
+            hud.Bind(combat, harvester);
+            combat.strikeButton = hud.strikeButton;
+            combat.guardButton = hud.guardButton;
+            combat.skillButton = hud.skillButton;
+            harvester.harvestButton = hud.harvestButton;
+            harvester.combat = combat;
         }
 
         private static Material Mat(Color color)
@@ -151,6 +185,11 @@ namespace Driftworld
             var controller = hero.AddComponent<PlayerController>();
             controller.gliderVisual = glider.transform;
             controller.rescueY = -30f;
+
+            var combat = hero.AddComponent<PlayerCombat>();
+            combat.respawnPoint = new Vector3(8f, 0.3f, 0f);
+            hero.AddComponent<Harvester>();
+            hero.AddComponent<LootBank>();
             return hero;
         }
 

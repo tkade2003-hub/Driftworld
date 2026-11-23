@@ -23,6 +23,7 @@ namespace Driftworld
 
         private CharacterController body;
         private DragInput input;
+        private PlayerCombat combat;
 
         private float headingDeg;
         private float currentSpeed;
@@ -95,6 +96,9 @@ namespace Driftworld
             lastGroundedPos = transform.position;
 
             float targetSpeed = Tuning.Movement.move_speed_mps * magnitude;
+            // MECH-003: guarding trades movement for safety at half speed.
+            if (combat == null) combat = GetComponent<PlayerCombat>();
+            if (combat != null && combat.IsGuarding) targetSpeed *= 0.5f;
             float rateTime = targetSpeed > currentSpeed
                 ? Tuning.Movement.accel_time_s
                 : Tuning.Movement.stop_time_s;
