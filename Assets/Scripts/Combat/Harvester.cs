@@ -102,8 +102,6 @@ namespace Driftworld
                 go.transform.position = from.Center + new Vector3((i % 3) - 1f, 0.4f + 0.2f * i, (i % 2) * 0.6f - 0.3f);
                 go.transform.localScale = new Vector3(0.22f, 0.22f, 0.22f);
                 var mat = Diag.SafeMaterial(new Color(1f, 0.85f, 0.35f));
-                mat.EnableKeyword("_EMISSION");
-                mat.SetColor("_EmissionColor", new Color(1f, 0.75f, 0.25f) * 1.5f);
                 go.GetComponent<Renderer>().material = mat;
                 Object.Destroy(go.GetComponent<Collider>());
                 var flight = go.AddComponent<LootFlight>();

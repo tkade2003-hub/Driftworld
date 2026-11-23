@@ -131,8 +131,6 @@ namespace Driftworld
             MakeTree(new Vector3(-11f, 0f, -2f));
 
             var glow = Mat(new Color(1f, 0.8f, 0.3f));
-            glow.EnableKeyword("_EMISSION");
-            glow.SetColor("_EmissionColor", new Color(1f, 0.7f, 0.2f) * 1.6f);
             Box("LaunchLedge", new Vector3(14.8f, 0.06f, 0f), new Vector3(0.5f, 0.12f, 5f), glow);
         }
 

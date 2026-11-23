@@ -30,26 +30,40 @@ namespace Driftworld
             Error = ex.GetType().Name + ": " + ex.Message;
         }
 
-        // A material that cannot throw: the Standard shader when the
-        // player has it, the built in default material when it does not.
+        // A material that cannot throw and cannot render in the magenta
+        // error color: a clone of the shipped Resources material, whose
+        // presence in the project forces the Standard shader to compile
+        // into the build. The old paths (a bare Shader.Find, or cloning
+        // the primitive default material) both produced magenta in the
+        // WebGL player, because nothing in any scene used the shader.
         public static Material SafeMaterial(Color color)
         {
+            if (template == null)
+            {
+                template = Resources.Load<Material>("Greybox/White");
+            }
+            if (template != null)
+            {
+                var clone = new Material(template);
+                clone.color = color;
+                return clone;
+            }
+            SetNote("Greybox template material missing, last resort fallback in use");
             Shader shader = Shader.Find("Standard");
-            Material m;
             if (shader != null)
             {
-                m = new Material(shader);
+                var m = new Material(shader);
+                m.color = color;
+                return m;
             }
-            else
-            {
-                SetNote("Standard shader missing in player, fallback material in use");
-                var probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                m = new Material(probe.GetComponent<Renderer>().sharedMaterial);
-                UnityEngine.Object.Destroy(probe);
-            }
-            m.color = color;
-            return m;
+            var probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var last = new Material(probe.GetComponent<Renderer>().sharedMaterial);
+            UnityEngine.Object.Destroy(probe);
+            last.color = color;
+            return last;
         }
+
+        private static Material template;
     }
 
     public class DiagOverlay : MonoBehaviour

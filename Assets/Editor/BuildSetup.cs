@@ -51,9 +51,26 @@ namespace Driftworld.EditorTools
             Build(BuildTarget.iOS, "builds/iOS/iOS");
         }
 
+        // The greybox builds every material in code at runtime, so no scene
+        // material ever tells the build pipeline to compile the Standard
+        // shader, and runtime materials then render in the magenta error
+        // color. Shipping one real material under Resources forces the
+        // shader into the build; runtime code clones it (see Diag).
+        public static void EnsureGreyboxMaterials()
+        {
+            const string dir = "Assets/Resources/Greybox";
+            const string path = dir + "/White.mat";
+            if (AssetDatabase.LoadAssetAtPath<Material>(path) != null) return;
+            Directory.CreateDirectory(dir);
+            var mat = new Material(Shader.Find("Standard")) { color = Color.white };
+            AssetDatabase.CreateAsset(mat, path);
+            AssetDatabase.SaveAssets();
+        }
+
         private static void Build(BuildTarget target, string path)
         {
             EnsureScene();
+            EnsureGreyboxMaterials();
             var options = new BuildPlayerOptions
             {
                 scenes = new[] { ScenePath },

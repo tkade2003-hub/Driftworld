@@ -29,6 +29,7 @@ namespace Driftworld
         private GameObject harvestPanel;
         private Image harvestFill;
         private Text toastText;
+        private Text diagText;
         private Font font;
 
         public void Bind(PlayerCombat playerCombat, Harvester playerHarvester)
@@ -135,6 +136,11 @@ namespace Driftworld
             // Harvest result toast, center.
             toastText = MakeText(root, "", 44, new Color(1f, 0.9f, 0.5f), TextAnchor.MiddleCenter);
             SetRect(toastText.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(900f, 60f));
+
+            // Build diagnostics readout, bottom left. Small, and it comes
+            // out with the rest of the diagnostics once the loop is proven.
+            diagText = MakeText(root, "", 24, new Color(1f, 1f, 1f, 0.75f), TextAnchor.LowerLeft);
+            SetRect(diagText.GetComponent<RectTransform>(), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(430f, 30f), new Vector2(840f, 40f));
         }
 
         private static void SetFill(Image fill, float frac)
@@ -223,6 +229,13 @@ namespace Driftworld
             else
             {
                 toastText.text = "";
+            }
+
+            if (diagText != null)
+            {
+                diagText.text = "DIAG step: " + Diag.Step
+                    + (Diag.Note.Length > 0 ? "  |  " + Diag.Note : "")
+                    + (Diag.Error.Length > 0 ? "  |  ERROR: " + Diag.Error : "");
             }
         }
     }
