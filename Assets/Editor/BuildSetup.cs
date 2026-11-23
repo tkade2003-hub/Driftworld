@@ -38,6 +38,11 @@ namespace Driftworld.EditorTools
 
         public static void BuildWebGL()
         {
+            // GitHub Pages does not send a Content Encoding header for
+            // compressed build files, and the WebGL loader then refuses to
+            // parse them. Ship the playable build uncompressed so it runs
+            // on plain static hosting.
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
             Build(BuildTarget.WebGL, "builds/WebGL/WebGL");
         }
 
