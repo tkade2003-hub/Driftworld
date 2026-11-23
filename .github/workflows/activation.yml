@@ -1,0 +1,20 @@
+name: Activation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  activation:
+    name: Request the Unity license file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request the manual activation file
+        uses: game-ci/unity-activation@v2
+        with:
+          unityVersion: 6000.0.23f1
+
+      - name: Upload the activation file
+        uses: actions/upload-artifact@v4
+        with:
+          name: Manual Activation File
+          path: "*.alf"
