@@ -55,6 +55,8 @@ namespace Driftworld
             float targetFov = Tuning.Camera.fov_deg
                 + (controller != null && controller.IsBoosting ? Tuning.Camera.fov_boost_deg : 0f);
             cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, targetFov, 1f - Mathf.Exp(-6f * Time.deltaTime));
+
+            Diag.CamStatus = "cam " + transform.position.ToString("F1");
         }
     }
 }

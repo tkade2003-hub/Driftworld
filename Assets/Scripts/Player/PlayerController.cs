@@ -34,6 +34,7 @@ namespace Driftworld
         private float glideLockout;
         private float glideSampleTimer;
         private Vector3 lastGlideSamplePos;
+        private float statusTimer;
 
         private void Awake()
         {
@@ -80,6 +81,17 @@ namespace Driftworld
             if (transform.position.y < rescueY)
             {
                 RescueToLastGround();
+            }
+
+            statusTimer -= Time.deltaTime;
+            if (statusTimer <= 0f)
+            {
+                statusTimer = 0.25f;
+                Diag.Status = "hero " + transform.position.ToString("F1")
+                    + " gnd " + body.isGrounded
+                    + " glide " + IsGliding
+                    + " spd " + currentSpeed.ToString("F1")
+                    + " vv " + verticalVelocity.ToString("F1");
             }
         }
 

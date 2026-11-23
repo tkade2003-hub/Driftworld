@@ -140,6 +140,7 @@ namespace Driftworld
             // Build diagnostics readout, bottom left. Small, and it comes
             // out with the rest of the diagnostics once the loop is proven.
             diagText = MakeText(root, "", 24, new Color(1f, 1f, 1f, 0.75f), TextAnchor.LowerLeft);
+            diagText.horizontalOverflow = HorizontalWrapMode.Overflow;
             SetRect(diagText.GetComponent<RectTransform>(), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(430f, 30f), new Vector2(840f, 40f));
         }
 
@@ -235,7 +236,8 @@ namespace Driftworld
             {
                 diagText.text = "DIAG step: " + Diag.Step
                     + (Diag.Note.Length > 0 ? "  |  " + Diag.Note : "")
-                    + (Diag.Error.Length > 0 ? "  |  ERROR: " + Diag.Error : "");
+                    + (Diag.Error.Length > 0 ? "  |  ERROR: " + Diag.Error : "")
+                    + "  |  " + Diag.Status + " " + Diag.CamStatus;
             }
         }
     }
