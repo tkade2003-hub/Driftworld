@@ -55,11 +55,18 @@ namespace Driftworld
 
         private static void MakeCreatures()
         {
-            // Island A: three commons near the start so the first fight is
-            // seconds away. Island B: one common and the elder.
-            MakeCreature(new Vector3(5f, 0f, 7f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 1);
-            MakeCreature(new Vector3(-4f, 0f, -8f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 2);
-            MakeCreature(new Vector3(10f, 0f, -6f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 3);
+            // Island A: three commons, the first fight seconds away but
+            // never on top of the player. Placement rule: nothing spawns
+            // inside aggro range (10 m) of the hero spawn at (8, 0, 0).
+            // The first two sat at 7.6 and 6.3 m, so an idle hero was
+            // charged, knocked west off the island, and looped through
+            // glide and rescue forever (proven by the diag readout on
+            // 2026-11-23). These spots sit in notice range or beyond:
+            // they lift their heads as the player approaches and only
+            // threaten inside 10 m. Island B: one common and the elder.
+            MakeCreature(new Vector3(-2f, 0f, 9f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 1);
+            MakeCreature(new Vector3(-6f, 0f, -8f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 2);
+            MakeCreature(new Vector3(12f, 0f, -10f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(15f, 15f), 3);
             MakeCreature(new Vector3(53f, -6f, -5f), -6f, false, new Vector3(58f, -6f, 0f), new Vector2(11f, 11f), 4);
             MakeCreature(new Vector3(60f, -6f, 4f), -6f, true, new Vector3(58f, -6f, 0f), new Vector2(11f, 11f), 5);
         }
