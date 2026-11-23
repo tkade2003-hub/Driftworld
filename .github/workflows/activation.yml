@@ -5,16 +5,29 @@ on:
 
 jobs:
   activation:
-    name: Request the Unity license file
+    name: Activate Unity and capture the license file
     runs-on: ubuntu-latest
     steps:
-      - name: Request the manual activation file
+      - name: Check out the project
+        uses: actions/checkout@v4
+      - name: Activate Unity with the account credentials
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/workspace" -w /workspace unityci/editor:ubuntu-6000.0.23f1-base-3.2.2 /opt/unity/Editor/Unity -batchmode -quit -createManualActivationFile -logFile - || true
-          ls -la
-          ls -la *.alf
-      - name: Upload the activation file
+          mkdir -p license-out
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -v "$GITHUB_WORKSPACE/license-out:/root/.local/share/unity3d" \
+            -e UNITY_EMAIL \
+            -e UNITY_PASSWORD \
+            unityci/editor:ubuntu-6000.0.23f1-base-3.2.2 \
+            /bin/sh -c '/opt/unity/Editor/Unity -batchmode -nographics -quit -projectPath /workspace -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" -logFile -' || echo "Unity exited with code $?"
+          echo "--- license-out contents ---"
+          find license-out -type f
+          test -f license-out/Unity/Unity_lic.ulf
+      - name: Upload the license file
         uses: actions/upload-artifact@v4
         with:
-          name: Manual Activation File
-          path: "*.alf"
+          name: Unity License File
+          path: license-out
