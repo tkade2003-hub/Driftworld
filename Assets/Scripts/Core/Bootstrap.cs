@@ -179,7 +179,10 @@ namespace Driftworld
         {
             var hero = new GameObject("Hero");
             hero.transform.position = new Vector3(8f, 0.3f, 0f);
-            hero.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            // Face into the island, toward its center and the first Moss
+            // Horns. The old east facing put the island edge 7 units ahead
+            // of spawn, so a first forward drag ran straight off it.
+            hero.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
 
             var body = hero.AddComponent<CharacterController>();
             body.height = 1.8f;
@@ -229,7 +232,7 @@ namespace Driftworld
             }
             cam.backgroundColor = new Color(0.45f, 0.68f, 0.8f);
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.transform.position = hero.transform.position + new Vector3(-6.5f, 3.2f, 0f);
+            cam.transform.position = hero.transform.position + new Vector3(6.5f, 3.2f, 0f);
 
             var follow = cam.GetComponent<FollowCamera>();
             if (follow == null) follow = cam.gameObject.AddComponent<FollowCamera>();

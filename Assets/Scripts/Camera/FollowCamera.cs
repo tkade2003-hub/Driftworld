@@ -16,6 +16,7 @@ namespace Driftworld
         private float yawDeg;
         private float distance;
         private float height;
+        private bool yawSnapped;
 
         private void Awake()
         {
@@ -30,6 +31,14 @@ namespace Driftworld
             if (target == null) return;
 
             float targetYaw = Mathf.Atan2(target.forward.x, target.forward.z) * Mathf.Rad2Deg;
+            // Snap on the first frame: the target is assigned after Awake,
+            // so yawDeg starts at zero and a lerp from there swings the
+            // camera, and the player's first drag, around at spawn.
+            if (!yawSnapped)
+            {
+                yawDeg = targetYaw;
+                yawSnapped = true;
+            }
             yawDeg = Mathf.LerpAngle(yawDeg, targetYaw, 1f - Mathf.Exp(-3.5f * Time.deltaTime));
 
             bool gliding = controller != null && controller.IsGliding;

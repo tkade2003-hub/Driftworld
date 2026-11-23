@@ -31,6 +31,9 @@ namespace Driftworld
         private float airTime;
         private float boostTimer;
         private Vector3 lastGroundedPos;
+        private float glideLockout;
+        private float glideSampleTimer;
+        private Vector3 lastGlideSamplePos;
 
         private void Awake()
         {
@@ -56,6 +59,8 @@ namespace Driftworld
 
         private void Update()
         {
+            if (glideLockout > 0f) glideLockout -= Time.deltaTime;
+
             Vector2 move = input.MoveVector();
             Vector3 wishDir = CameraRelativeDirection(move);
 
@@ -127,8 +132,13 @@ namespace Driftworld
             motion.y = verticalVelocity;
             body.Move(motion * Time.deltaTime);
 
-            // MECH-002: the glider opens once the hero is airborne and falling.
-            if (airTime >= Tuning.Glide.deploy_delay_s && verticalVelocity < 0f)
+            // MECH-002: the glider opens once the hero is airborne, falling,
+            // and has dropped well below the ledge he left. The drop gate is
+            // what keeps a step off a curb or a ruin block from forcing a
+            // glide the player never asked for.
+            float dropBelowLedge = lastGroundedPos.y - transform.position.y;
+            if (airTime >= Tuning.Glide.deploy_delay_s && verticalVelocity < 0f
+                && dropBelowLedge >= 1.5f && glideLockout <= 0f)
             {
                 EnterGlide();
             }
@@ -137,6 +147,8 @@ namespace Driftworld
         private void EnterGlide()
         {
             IsGliding = true;
+            glideSampleTimer = 0f;
+            lastGlideSamplePos = transform.position;
             if (gliderVisual != null) gliderVisual.gameObject.SetActive(true);
         }
 
@@ -146,11 +158,39 @@ namespace Driftworld
             IsBoosting = false;
             boostTimer = 0f;
             verticalVelocity = 0f;
+            // A short lockout so a landing exit cannot bounce straight back
+            // into a glide while the hero settles onto the ground.
+            glideLockout = 0.6f;
             if (gliderVisual != null) gliderVisual.gameObject.SetActive(false);
         }
 
         private void UpdateGlide(Vector2 move, Vector3 wishDir)
         {
+            // Landing assist: when ground is just below, the glide is over.
+            // Without this, arriving a hair under an island lip pressed the
+            // hero against its side and sank him slowly with dead controls.
+            if (Physics.Raycast(transform.position + Vector3.up * 0.3f, Vector3.down, 1.8f))
+            {
+                ExitGlide();
+                return;
+            }
+
+            // Stuck exit: if the glide is barely moving, the hero is pressed
+            // against something. Drop him; gravity and the rescue sort it
+            // out in about a second instead of a long hang.
+            glideSampleTimer += Time.deltaTime;
+            if (glideSampleTimer >= 0.75f)
+            {
+                float covered = Vector3.Distance(transform.position, lastGlideSamplePos);
+                if (covered < 0.4f)
+                {
+                    ExitGlide();
+                    return;
+                }
+                glideSampleTimer = 0f;
+                lastGlideSamplePos = transform.position;
+            }
+
             if (boostTimer > 0f)
             {
                 boostTimer -= Time.deltaTime;
@@ -177,7 +217,19 @@ namespace Driftworld
             if (lane != null) speed *= Tuning.Glide.lane_speed_mult;
             if (IsBoosting) speed *= Tuning.Glide.boost_speed_mult;
 
-            float vertical = lane != null ? Tuning.Glide.lane_lift_mps : -Tuning.Glide.sink_rate_mps;
+            // Lane lift only carries the hero up to cruising height inside
+            // the lane; above that he holds level instead of porpoising out
+            // of the top of the lane volume and sinking back in.
+            float vertical;
+            if (lane != null)
+            {
+                float cruiseY = lane.transform.position.y + 2f;
+                vertical = transform.position.y < cruiseY ? Tuning.Glide.lane_lift_mps : 0f;
+            }
+            else
+            {
+                vertical = -Tuning.Glide.sink_rate_mps;
+            }
 
             Vector3 motion = HeadingForward * speed;
             motion.y = vertical;
