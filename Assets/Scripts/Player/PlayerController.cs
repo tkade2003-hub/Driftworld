@@ -36,6 +36,16 @@ namespace Driftworld
         private Vector3 lastGlideSamplePos;
         private float statusTimer;
 
+        // Instrumentation (temporary, comes out with the diag readout):
+        // counts that show exactly how the hero leaves the ground.
+        private int groundFrames;
+        private int glideEntries;
+        private int rayExits;
+        private int stuckExits;
+        private int groundExits;
+        private float lastInputMag;
+        private string lastRayHit = "none";
+
         private void Awake()
         {
             body = GetComponent<CharacterController>();
@@ -63,6 +73,7 @@ namespace Driftworld
             if (glideLockout > 0f) glideLockout -= Time.deltaTime;
 
             Vector2 move = input.MoveVector();
+            lastInputMag = move.magnitude;
             Vector3 wishDir = CameraRelativeDirection(move);
 
             if (IsGliding)
@@ -90,6 +101,14 @@ namespace Driftworld
                 Diag.Status = "hero " + transform.position.ToString("F1")
                     + " gnd " + body.isGrounded
                     + " glide " + IsGliding
+                    + " lg " + lastGroundedPos.ToString("F1")
+                    + " inp " + lastInputMag.ToString("F2")
+                    + " grd " + groundFrames
+                    + " ge " + glideEntries
+                    + " xr " + rayExits
+                    + " xs " + stuckExits
+                    + " xg " + groundExits
+                    + " hit " + lastRayHit
                     + " spd " + currentSpeed.ToString("F1")
                     + " vv " + verticalVelocity.ToString("F1");
             }
@@ -109,6 +128,7 @@ namespace Driftworld
 
         private void UpdateGround(Vector3 wishDir, float magnitude)
         {
+            groundFrames++;
             airTime = 0f;
             lastGroundedPos = transform.position;
 
@@ -158,6 +178,7 @@ namespace Driftworld
 
         private void EnterGlide()
         {
+            glideEntries++;
             IsGliding = true;
             glideSampleTimer = 0f;
             lastGlideSamplePos = transform.position;
@@ -181,8 +202,11 @@ namespace Driftworld
             // Landing assist: when ground is just below, the glide is over.
             // Without this, arriving a hair under an island lip pressed the
             // hero against its side and sank him slowly with dead controls.
-            if (Physics.Raycast(transform.position + Vector3.up * 0.3f, Vector3.down, 1.8f))
+            RaycastHit rayHit;
+            if (Physics.Raycast(transform.position + Vector3.up * 0.3f, Vector3.down, out rayHit, 1.8f))
             {
+                rayExits++;
+                lastRayHit = rayHit.collider != null ? rayHit.collider.gameObject.name : "unnamed";
                 ExitGlide();
                 return;
             }
@@ -196,6 +220,7 @@ namespace Driftworld
                 float covered = Vector3.Distance(transform.position, lastGlideSamplePos);
                 if (covered < 0.4f)
                 {
+                    stuckExits++;
                     ExitGlide();
                     return;
                 }
@@ -249,6 +274,7 @@ namespace Driftworld
 
             if (body.isGrounded)
             {
+                groundExits++;
                 ExitGlide();
                 lastGroundedPos = transform.position;
             }
