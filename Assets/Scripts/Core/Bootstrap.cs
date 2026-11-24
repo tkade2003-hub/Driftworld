@@ -11,10 +11,16 @@ namespace Driftworld
     // greybox: the loop proves itself before art gets a vote.
     public static class Bootstrap
     {
+        // MECH-009: the combat sandbox is the same shipped build with
+        // ?sandbox in the URL. One flat arena, one training monster, the
+        // debug panel open. The slice world builds otherwise.
+        public static bool SandboxActive { get; private set; }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Build()
         {
             if (Object.FindAnyObjectByType<PlayerController>() != null) return;
+            SandboxActive = Application.absoluteURL != null && Application.absoluteURL.Contains("sandbox");
 
             try
             {
@@ -28,6 +34,23 @@ namespace Driftworld
 
                 Diag.SetStep("sun");
                 MakeSun();
+                if (SandboxActive)
+                {
+                    Diag.SetStep("sandbox arena");
+                    MakeSandboxArena();
+                    Diag.SetStep("hero");
+                    GameObject sandboxHero = MakeHero(new Vector3(0f, 0.3f, 7f), 180f);
+                    Diag.SetStep("training monster");
+                    MakeTrainingMonster();
+                    Diag.SetStep("camera");
+                    MakeCamera(sandboxHero);
+                    Diag.SetStep("ripple canvas");
+                    MakeRippleCanvas(sandboxHero.GetComponent<DragInput>());
+                    Diag.SetStep("combat hud");
+                    MakeCombatHud(sandboxHero);
+                    Diag.SetStep("ready");
+                    return;
+                }
                 Diag.SetStep("island A");
                 MakeIslandA();
                 Diag.SetStep("island B");
@@ -35,7 +58,7 @@ namespace Driftworld
                 Diag.SetStep("wind lane");
                 WindLane lane = MakeWindLane();
                 Diag.SetStep("hero");
-                GameObject hero = MakeHero();
+                GameObject hero = MakeHero(new Vector3(8f, 0.3f, 0f), -90f);
                 Diag.SetStep("creatures");
                 MakeCreatures();
                 Diag.SetStep("camera");
@@ -51,6 +74,25 @@ namespace Driftworld
                 Diag.Fail(ex);
                 Debug.LogException(ex);
             }
+        }
+
+        private static void MakeSandboxArena()
+        {
+            var grass = Mat(new Color(0.42f, 0.62f, 0.35f));
+            var stone = Mat(new Color(0.55f, 0.52f, 0.48f));
+            Box("SandboxGround", new Vector3(0f, -1f, 0f), new Vector3(44f, 2f, 44f), grass);
+            Box("SandboxBlock1", new Vector3(-8f, 1f, -8f), new Vector3(3f, 2f, 3f), stone);
+            Box("SandboxBlock2", new Vector3(9f, 0.75f, 6f), new Vector3(2f, 1.5f, 2f), stone);
+            MakeTree(new Vector3(-12f, 0f, 10f));
+            MakeTree(new Vector3(12f, 0f, -12f));
+        }
+
+        private static void MakeTrainingMonster()
+        {
+            var go = new GameObject("TrainingMossHorn");
+            var creature = go.AddComponent<MossHorn>();
+            creature.Configure(new Vector3(0f, 0f, -4f), 0f, false, new Vector3(0f, 0f, 0f), new Vector2(20f, 20f), 99);
+            creature.SetTraining();
         }
 
         private static void MakeCreatures()
@@ -90,14 +132,25 @@ namespace Driftworld
 
             var combat = hero.GetComponent<PlayerCombat>();
             var harvester = hero.GetComponent<Harvester>();
+            CombatHud.DebugPanelStartsOpen = SandboxActive;
             var hudGo = new GameObject("CombatHud");
             var hud = hudGo.AddComponent<CombatHud>();
             hud.Bind(combat, harvester);
             combat.strikeButton = hud.strikeButton;
             combat.guardButton = hud.guardButton;
             combat.skillButton = hud.skillButton;
+            combat.dodgeButton = hud.dodgeButton;
+            combat.lockButton = hud.lockButton;
             harvester.harvestButton = hud.harvestButton;
             harvester.combat = combat;
+
+            // MECH-009 presentation and observability objects.
+            var numbers = new GameObject("DamageNumbers");
+            numbers.AddComponent<DamageNumbers>();
+            var vfx = new GameObject("HitVfx");
+            vfx.AddComponent<HitVfx>();
+            var bridge = new GameObject("TestBridge");
+            bridge.AddComponent<TestBridge>();
         }
 
         private static Material Mat(Color color)
@@ -182,14 +235,14 @@ namespace Driftworld
             return lane;
         }
 
-        private static GameObject MakeHero()
+        private static GameObject MakeHero(Vector3 spawn, float yawDeg)
         {
             var hero = new GameObject("Hero");
-            hero.transform.position = new Vector3(8f, 0.3f, 0f);
+            hero.transform.position = spawn;
             // Face into the island, toward its center and the first Moss
             // Horns. The old east facing put the island edge 7 units ahead
             // of spawn, so a first forward drag ran straight off it.
-            hero.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
+            hero.transform.rotation = Quaternion.Euler(0f, yawDeg, 0f);
 
             var body = hero.AddComponent<CharacterController>();
             body.height = 1.8f;
@@ -221,7 +274,9 @@ namespace Driftworld
             controller.rescueY = -30f;
 
             var combat = hero.AddComponent<PlayerCombat>();
-            combat.respawnPoint = new Vector3(8f, 0.3f, 0f);
+            combat.respawnPoint = spawn;
+            hero.AddComponent<CombatDebugInput>();
+            hero.AddComponent<WeaponRangeViz>();
             hero.AddComponent<Harvester>();
             hero.AddComponent<LootBank>();
             return hero;

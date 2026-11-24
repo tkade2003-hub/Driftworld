@@ -21,6 +21,21 @@ namespace Driftworld
         public float BoostGauge { get; private set; }
         public Vector3 HeadingForward => Quaternion.Euler(0f, headingDeg, 0f) * Vector3.forward;
 
+        // MECH-009: combat rotates the hero directly (aim snap during
+        // startup, dodge direction). It goes through here so the movement
+        // heading never desyncs from the visible rotation.
+        public void SetHeading(float deg)
+        {
+            headingDeg = deg;
+            transform.rotation = Quaternion.Euler(0f, headingDeg, 0f);
+        }
+
+        // The current camera relative move direction, for dodge.
+        public Vector3 WishDirection()
+        {
+            return CameraRelativeDirection(input.MoveVector());
+        }
+
         private CharacterController body;
         private DragInput input;
         private PlayerCombat combat;
@@ -44,6 +59,7 @@ namespace Driftworld
         private int stuckExits;
         private int groundExits;
         private float lastInputMag;
+        public float LastInputMagnitude => lastInputMag;
         private string lastRayHit = "none";
 
         private void Awake()
@@ -82,7 +98,13 @@ namespace Driftworld
             }
             else if (body.isGrounded)
             {
-                UpdateGround(wishDir, move.magnitude);
+                if (combat == null) combat = GetComponent<PlayerCombat>();
+                // MECH-009 commitment: mid swing or mid dodge, movement
+                // input does not translate the hero. Combat drives the
+                // body through its own step in and dodge motion; here we
+                // only keep him settled on the ground.
+                if (combat != null && combat.IsCommitted) UpdateCommitted();
+                else UpdateGround(wishDir, move.magnitude);
             }
             else
             {
@@ -124,6 +146,16 @@ namespace Driftworld
             fwd.Normalize(); right.Normalize();
             Vector3 dir = right * move.x + fwd * move.y;
             return dir.sqrMagnitude > 1f ? dir.normalized : dir;
+        }
+
+        private void UpdateCommitted()
+        {
+            groundFrames++;
+            airTime = 0f;
+            lastGroundedPos = transform.position;
+            currentSpeed = 0f;
+            verticalVelocity = -2f;
+            body.Move(Vector3.down * 2f * Time.deltaTime);
         }
 
         private void UpdateGround(Vector3 wishDir, float magnitude)

@@ -16,6 +16,7 @@ namespace Driftworld
         public static string Note = "";
         public static string Status = "";
         public static string CamStatus = "";
+        public static string Combat = "";
 
         public static void SetStep(string step)
         {

@@ -2,10 +2,11 @@ using UnityEngine;
 
 namespace Driftworld
 {
-    // MECH-003: the wind spear projectile. Travels straight, expires at max
-    // range, and applies skill damage and wind stagger to the first Moss
-    // Horn it reaches. Distance checks only; the greybox uses no physics
-    // collisions for combat.
+    // MECH-003: the wind spear projectile, now the Long Sword special.
+    // Travels straight, expires at max range, and resolves against the
+    // first monster part it reaches through the MECH-009 damage pipeline.
+    // Distance checks only; the greybox uses no physics collisions for
+    // combat.
     public class WindSpear : MonoBehaviour
     {
         private Vector3 velocity;
@@ -30,16 +31,32 @@ namespace Driftworld
             for (int i = 0; i < MossHorn.All.Count; i++)
             {
                 MossHorn c = MossHorn.All[i];
-                if (c == null || c.IsDefeated) continue;
-                Vector3 to = c.Center - transform.position;
-                to.y = 0f;
-                if (to.magnitude < 1.5f)
+                if (c == null || c.IsDefeated || c.Hurtboxes == null) continue;
+
+                HurtboxPart bestPart = null;
+                float bestDist = float.MaxValue;
+                var parts = c.Hurtboxes.Parts;
+                for (int p = 0; p < parts.Count; p++)
                 {
-                    c.TakeHit(Tuning.Combat.skill_damage, Tuning.MossHorn.stagger_skill, true);
-                    spent = true;
-                    Destroy(gameObject);
-                    return;
+                    if (parts[p].Inert) continue;
+                    float d = Vector3.Distance(transform.position, parts[p].WorldCenter);
+                    if (d < parts[p].WorldRadius + 0.35f && d < bestDist)
+                    {
+                        bestDist = d;
+                        bestPart = parts[p];
+                    }
                 }
+                if (bestPart == null) continue;
+
+                DamageResult r = DamagePipeline.ResolveWindSpear(c, bestPart);
+                int outcome = c.ApplyDamage(r, DamageKind.Cut);
+                r.BrokePart = outcome == 1;
+                r.SeveredPart = outcome == 2;
+                CombatEvents.PublishMonsterHit(r);
+                c.ApplyHitstop(Tuning.Combat.hitstop_ms / 1000f);
+                spent = true;
+                Destroy(gameObject);
+                return;
             }
 
             if (traveled >= Tuning.Combat.skill_range_m)
