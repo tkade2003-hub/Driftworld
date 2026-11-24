@@ -22,6 +22,7 @@ namespace Driftworld
 
         private PlayerCombat combat;
         private PlayerController controller;
+        private DragInput drag;
         private float pushTimer;
         private float logTimer;
         private readonly List<DamageResult> hits = new List<DamageResult>();
@@ -62,7 +63,11 @@ namespace Driftworld
             if (combat == null)
             {
                 combat = Object.FindAnyObjectByType<PlayerCombat>();
-                if (combat != null) controller = combat.GetComponent<PlayerController>();
+                if (combat != null)
+                {
+                    controller = combat.GetComponent<PlayerController>();
+                    drag = combat.GetComponent<DragInput>();
+                }
                 if (combat == null) return;
             }
             pushTimer -= Time.deltaTime;
@@ -98,9 +103,13 @@ namespace Driftworld
             sb.Append(",\"weapon\":\"").Append(combat.Weapon != null ? combat.Weapon.WeaponId : "none").Append("\"");
             sb.Append(",\"step\":\"").Append(combat.CurrentStepName).Append("\"");
             sb.Append(",\"locked\":").Append(Targeting.Locked ? "true" : "false");
+            sb.Append(",\"fight\":").Append(Targeting.FightMode ? "true" : "false");
             sb.Append(",\"lockName\":\"").Append(Targeting.Current != null ? Targeting.Current.DisplayName : "").Append("\"");
             sb.Append(",\"invuln\":").Append(combat.IsInvulnerable ? "true" : "false");
             sb.Append(",\"inp\":").Append(controller != null ? F(controller.LastInputMagnitude) : "0");
+            sb.Append(",\"gest\":\"").Append(drag != null ? drag.LastGesture : "none").Append("\"");
+            sb.Append(",\"touch\":").Append(drag != null && drag.TouchHeld ? "true" : "false");
+            sb.Append(",\"peak\":").Append(drag != null ? F(drag.PeakDisplacement) : "0");
             sb.Append(",\"hdg\":").Append(controller != null ? F(Mathf.Atan2(controller.HeadingForward.x, controller.HeadingForward.z) * Mathf.Rad2Deg) : "0");
             sb.Append("},\"monsters\":[");
             for (int i = 0; i < MossHorn.All.Count; i++)

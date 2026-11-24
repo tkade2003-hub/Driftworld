@@ -6,24 +6,15 @@ namespace Driftworld
     // The combat HUD, built in code like the rest of the greybox: hero
     // health and stamina, the loot counter (the score the player watches),
     // the engaged creature bar, an objective line that always names the
-    // next goal, the combat buttons on the right side (strike, guard,
-    // dodge, skill, lock), and the harvest button with its hold progress.
-    // MECH-009 adds the weapon label, the lock and dodge buttons, and a
-    // developer debug panel (weapon switching, visualization toggles,
-    // monster state forcing) that the sandbox opens by default. No
-    // joystick is drawn, ever; movement stays on the left side drag.
+    // next goal, the weapon label, and the harvest progress panel.
+    // Controls overhaul 2026-11-24: the HUD is display only. Every on
+    // screen action button (strike, guard, dodge, skill, lock, harvest)
+    // and the developer debug panel are gone; combat is gestures now
+    // (drag moves, tap strikes, flick dodges, still hold harvests). The
+    // canvas carries no GraphicRaycaster, so the HUD layer cannot
+    // intercept a touch anywhere on screen.
     public class CombatHud : MonoBehaviour
     {
-        public HoldButton strikeButton;
-        public HoldButton guardButton;
-        public HoldButton skillButton;
-        public HoldButton harvestButton;
-        public HoldButton dodgeButton;
-        public HoldButton lockButton;
-
-        // Set by Bootstrap before the HUD is created in sandbox mode.
-        public static bool DebugPanelStartsOpen;
-
         private PlayerCombat combat;
         private Harvester harvester;
         private Image healthFill;
@@ -33,19 +24,12 @@ namespace Driftworld
         private GameObject creaturePanel;
         private Text lootText;
         private Text objectiveText;
-        private Text skillLabel;
-        private Text lockLabel;
         private Text weaponLabel;
         private GameObject harvestPanel;
         private Image harvestFill;
         private Text toastText;
         private Text diagText;
         private Font font;
-
-        private GameObject debugPanel;
-        private HoldButton dbgToggle;
-        private HoldButton[] debugButtons;
-        private string[] debugActions;
 
         public void Bind(PlayerCombat playerCombat, Harvester playerHarvester)
         {
@@ -93,24 +77,6 @@ namespace Driftworld
             return img;
         }
 
-        private HoldButton MakeButton(Transform parent, string label, Vector2 aMin, Vector2 aMax, Vector2 pos, Vector2 size, Color color)
-        {
-            var img = MakePanel(parent, aMin, aMax, pos, size, color);
-            var btn = img.gameObject.AddComponent<HoldButton>();
-            var t = MakeText(img.transform, label, 40, Color.white, TextAnchor.MiddleCenter);
-            SetRect(t.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            return btn;
-        }
-
-        private HoldButton MakeSmallButton(Transform parent, string label, Vector2 pos, Vector2 size)
-        {
-            var img = MakePanel(parent, Vector2.zero, Vector2.zero, pos, size, new Color(0.15f, 0.15f, 0.2f, 0.9f));
-            var btn = img.gameObject.AddComponent<HoldButton>();
-            var t = MakeText(img.transform, label, 26, Color.white, TextAnchor.MiddleCenter);
-            SetRect(t.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            return btn;
-        }
-
         private void Build()
         {
             var canvas = gameObject.AddComponent<Canvas>();
@@ -119,7 +85,9 @@ namespace Driftworld
             var scaler = gameObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
-            gameObject.AddComponent<GraphicRaycaster>();
+            // No GraphicRaycaster on purpose: nothing on this canvas is
+            // interactive, and without a raycaster no HUD element can
+            // claim a touch before the gesture stream sees it.
             Transform root = transform;
 
             // Hero health and stamina, top left.
@@ -147,19 +115,10 @@ namespace Driftworld
             SetRect(objectiveText.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -160f), new Vector2(980f, 90f));
             objectiveText.horizontalOverflow = HorizontalWrapMode.Wrap;
 
-            // Combat buttons, bottom right.
-            strikeButton = MakeButton(root, "Strike", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-130f, 150f), new Vector2(200f, 200f), new Color(0.55f, 0.2f, 0.15f, 0.85f));
-            guardButton = MakeButton(root, "Guard", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-360f, 130f), new Vector2(160f, 160f), new Color(0.2f, 0.35f, 0.5f, 0.85f));
-            dodgeButton = MakeButton(root, "Dodge", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-370f, 360f), new Vector2(160f, 160f), new Color(0.25f, 0.5f, 0.3f, 0.85f));
-            skillButton = MakeButton(root, "Wind", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-150f, 400f), new Vector2(160f, 160f), new Color(0.15f, 0.5f, 0.6f, 0.85f));
-            skillLabel = skillButton.GetComponentInChildren<Text>();
-            lockButton = MakeButton(root, "Lock", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-590f, 360f), new Vector2(140f, 140f), new Color(0.4f, 0.35f, 0.15f, 0.85f));
-            lockLabel = lockButton.GetComponentInChildren<Text>();
-
-            // Harvest button, bottom center, with hold progress.
+            // Harvest progress, bottom center. Display only: the hold
+            // itself is a still touch anywhere beside the corpse.
             harvestPanel = MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 130f), new Vector2(460f, 120f), new Color(0.1f, 0.1f, 0.1f, 0.7f)).gameObject;
             harvestFill = MakePanel(harvestPanel.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0.9f, 0.7f, 0.25f, 0.9f));
-            harvestButton = harvestPanel.AddComponent<HoldButton>();
             var hLabel = MakeText(harvestPanel.transform, "Hold to Harvest", 40, Color.white, TextAnchor.MiddleCenter);
             SetRect(hLabel.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             harvestPanel.SetActive(false);
@@ -168,48 +127,11 @@ namespace Driftworld
             toastText = MakeText(root, "", 44, new Color(1f, 0.9f, 0.5f), TextAnchor.MiddleCenter);
             SetRect(toastText.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(900f, 60f));
 
-            BuildDebugPanel(root);
-
             // Build diagnostics readout, bottom left. Small, and it comes
             // out with the rest of the diagnostics once the loop is proven.
             diagText = MakeText(root, "", 24, new Color(1f, 1f, 1f, 0.75f), TextAnchor.LowerLeft);
             diagText.horizontalOverflow = HorizontalWrapMode.Overflow;
             SetRect(diagText.GetComponent<RectTransform>(), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(430f, 30f), new Vector2(840f, 40f));
-        }
-
-        // The developer panel: two rows of toggles and force buttons, two
-        // rows of weapon buttons. Actions are polled through HoldButton
-        // press edges in Update, the same input model as combat.
-        private void BuildDebugPanel(Transform root)
-        {
-            dbgToggle = MakeButton(root, "DBG", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(70f, 130f), new Vector2(110f, 70f), new Color(0.2f, 0.2f, 0.25f, 0.8f));
-            debugPanel = MakePanel(root, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(330f, 330f), new Vector2(620f, 330f), new Color(0f, 0f, 0f, 0.55f)).gameObject;
-
-            string[] labels =
-            {
-                "Hitbox", "Hurtbox", "Numbers", "NoCrit",
-                "Reset", "Stagger", "Topple", "Stun", "Enrage",
-                "LS", "HAM", "GS", "SNS", "DB",
-            };
-            debugActions = new[]
-            {
-                "hitbox", "hurtbox", "numbers", "nocrit",
-                "reset", "stagger", "topple", "stun", "enrage",
-                "longsword", "hammer", "greatsword", "swordshield", "dualblades",
-            };
-            debugButtons = new HoldButton[labels.Length];
-            for (int i = 0; i < labels.Length; i++)
-            {
-                // Panel local coordinates run from its bottom left corner.
-                // Row 0: indices 0 to 4 (toggles and reset). Row 1: indices
-                // 5 to 8 (force buttons). Row 2: indices 9 to 13 (weapons).
-                int row = i < 5 ? 0 : i < 9 ? 1 : 2;
-                int col = i < 5 ? i : i < 9 ? i - 5 : i - 9;
-                float x = 59f + col * 118f;
-                float y = 285f - row * 90f;
-                debugButtons[i] = MakeSmallButton(debugPanel.transform, labels[i], new Vector2(x, y), new Vector2(110f, 64f));
-            }
-            debugPanel.SetActive(DebugPanelStartsOpen);
         }
 
         private static void SetFill(Image fill, float frac)
@@ -222,60 +144,9 @@ namespace Driftworld
             r.offsetMax = Vector2.zero;
         }
 
-        private MossHorn EngagedMonster()
-        {
-            if (combat == null) return null;
-            if (Targeting.Current != null && !Targeting.Current.IsDefeated) return Targeting.Current;
-            MossHorn best = null;
-            float bestDist = 30f;
-            for (int i = 0; i < MossHorn.All.Count; i++)
-            {
-                MossHorn m = MossHorn.All[i];
-                if (m == null || m.IsDefeated) continue;
-                float d = Vector3.Distance(combat.transform.position, m.transform.position);
-                if (d < bestDist) { bestDist = d; best = m; }
-            }
-            return best;
-        }
-
-        private void RunDebugAction(string action)
-        {
-            switch (action)
-            {
-                case "hitbox": CombatDebug.ShowHitboxes = !CombatDebug.ShowHitboxes; break;
-                case "hurtbox": CombatDebug.ShowHurtboxes = !CombatDebug.ShowHurtboxes; break;
-                case "numbers": CombatDebug.ShowDamageNumbers = !CombatDebug.ShowDamageNumbers; break;
-                case "nocrit": CombatDebug.ForceNoCrit = !CombatDebug.ForceNoCrit; break;
-                case "longsword": case "hammer": case "greatsword": case "swordshield": case "dualblades":
-                    if (combat != null) combat.EquipWeapon(action);
-                    break;
-                default:
-                    MossHorn m = EngagedMonster();
-                    if (m == null) break;
-                    if (action == "reset") m.ResetFight();
-                    else if (action == "stagger") m.ForceStagger();
-                    else if (action == "topple") m.ForceKnockdown();
-                    else if (action == "stun") m.ForceStun();
-                    else if (action == "enrage") m.ForceEnrage();
-                    break;
-            }
-        }
-
         private void Update()
         {
             if (combat == null) return;
-
-            if (dbgToggle != null && dbgToggle.PressedThisFrame)
-            {
-                debugPanel.SetActive(!debugPanel.activeSelf);
-            }
-            if (debugPanel.activeSelf && debugButtons != null)
-            {
-                for (int i = 0; i < debugButtons.Length; i++)
-                {
-                    if (debugButtons[i] != null && debugButtons[i].PressedThisFrame) RunDebugAction(debugActions[i]);
-                }
-            }
 
             SetFill(healthFill, combat.Health / Tuning.Combat.hero_health_max);
             SetFill(staminaFill, combat.Stamina / Tuning.Combat.stamina_max);
@@ -290,18 +161,6 @@ namespace Driftworld
             {
                 weaponLabel.text = combat.Weapon.DisplayName
                     + (combat.CurrentStepName.Length > 0 ? "  " + combat.CurrentStepName : "");
-            }
-
-            if (skillLabel != null)
-            {
-                skillLabel.text = combat.SkillCooldownRemaining > 0.05f
-                    ? Mathf.CeilToInt(combat.SkillCooldownRemaining).ToString()
-                    : (combat.Weapon != null && combat.Weapon.SpecialIsProjectile ? "Wind" : "Skill");
-            }
-            if (lockLabel != null)
-            {
-                lockLabel.text = Targeting.Locked ? "LOCKED" : "Lock";
-                lockLabel.fontSize = Targeting.Locked ? 30 : 40;
             }
 
             if (LootBank.Instance != null)
@@ -337,8 +196,7 @@ namespace Driftworld
                     case MossHorn.State.Flinch: state = "  FLINCH"; break;
                 }
                 if (engaged.IsEnraged) state += "  ENRAGED";
-                creatureLabel.text = (Targeting.Locked && Targeting.Current == engaged ? "LOCK  " : "")
-                    + engaged.DisplayName + state;
+                creatureLabel.text = engaged.DisplayName + state;
             }
             else
             {

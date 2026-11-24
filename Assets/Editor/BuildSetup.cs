@@ -51,22 +51,29 @@ namespace Driftworld.EditorTools
         // sets touch-action on the canvas and the framework does not
         // preventDefault drags, so the browser claims every drag as a
         // scroll gesture and cancels it before the game can use it. The
-        // hero then never receives movement input and the combat buttons
-        // lose their pointer events the same way, while the player sees
+        // hero then never receives movement input, while the player sees
         // only the browser view shifting. Declaring touch-action: none
         // hands all drags to the game, which is what the drag movement
         // spec assumes. Proven 2026-11-23: simulated mouse and touch
         // drags moved the hero in Chromium (inp 1.00), while Vashon's
         // phone playtest of the same build could not move him at all.
+        // Controls overhaul 2026-11-24: some phone browsers (older iOS
+        // Safari especially) ignore or only partly honor touch-action,
+        // so the patch also installs a touchmove preventDefault guard
+        // on the canvas as a second line of defense. A canceled touch
+        // mid drag reads as a release to the gesture stream, which is
+        // the failure this guard exists to prevent.
         private static void PatchWebGLIndex(string indexPath)
         {
             if (!File.Exists(indexPath)) return;
             string html = File.ReadAllText(indexPath);
-            if (html.Contains("touch-action")) return;
+            if (html.Contains("dw-gesture-guard")) return;
             const string style = "    <style>#unity-canvas { touch-action: none; } html, body { overscroll-behavior: none; }</style>\n";
             html = html.Replace("</head>", style + "  </head>");
+            const string guard = "    <script>/*dw-gesture-guard*/document.addEventListener('touchmove',function(e){var t=e.target;if(t&&(t.id==='unity-canvas'||t.tagName==='CANVAS')){e.preventDefault();}},{passive:false});</script>\n";
+            html = html.Replace("</body>", guard + "  </body>");
             File.WriteAllText(indexPath, html);
-            Debug.Log("Driftworld: patched index.html with touch-action: none for mobile drag input.");
+            Debug.Log("Driftworld: patched index.html with touch-action: none and the gesture guard for mobile drag input.");
         }
 
         public static void BuildIOS()

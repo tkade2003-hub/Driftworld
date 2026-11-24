@@ -17,6 +17,20 @@ namespace Driftworld
             public const float ripple_fade_s = 0.25f;    // s, range 0.15 to 0.4
         }
 
+        // Controls overhaul 2026-11-24 (group Gestures). One touch stream
+        // is classified at release: tap, charge hold, drag, or flick. The
+        // px values are authored at 1080p width and scaled to the real
+        // screen exactly like the Movement group.
+        public static class Gestures
+        {
+            public const float tap_max_duration_s = 0.28f;    // s, a tap ends faster than this
+            public const float hold_still_px = 26f;           // px at 1080p width, peak drift allowed inside tap, charge, and harvest holds
+            public const float flick_max_duration_s = 0.32f;  // s, a flick ends faster than this
+            public const float flick_min_distance_px = 55f;   // px at 1080p width, release displacement a flick must cover
+            public const float flick_min_velocity_px_s = 700f;// px per s at 1080p width, average release velocity a flick must exceed
+            public const float fight_swipe_max_duration_s = 1.2f; // s, fight mode only: a swipe released inside this window dodges at any speed (MECH-009 fight mode, 2026-11-24)
+        }
+
         // MECH-002 Glide and Wind Lanes (group Glide)
         public static class Glide
         {

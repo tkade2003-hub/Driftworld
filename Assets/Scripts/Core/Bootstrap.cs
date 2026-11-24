@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Driftworld
@@ -122,26 +121,19 @@ namespace Driftworld
 
         private static void MakeCombatHud(GameObject hero)
         {
-            // uGUI buttons receive no touches at all without an EventSystem.
-            if (Object.FindAnyObjectByType<EventSystem>() == null)
-            {
-                var es = new GameObject("EventSystem");
-                es.AddComponent<EventSystem>();
-                es.AddComponent<StandaloneInputModule>();
-            }
-
+            // Controls overhaul 2026-11-24: no EventSystem is created.
+            // The HUD is display only and nothing in the game consumes
+            // uGUI pointer events anymore; every touch goes to the one
+            // gesture stream on the hero.
             var combat = hero.GetComponent<PlayerCombat>();
             var harvester = hero.GetComponent<Harvester>();
-            CombatHud.DebugPanelStartsOpen = SandboxActive;
             var hudGo = new GameObject("CombatHud");
             var hud = hudGo.AddComponent<CombatHud>();
             hud.Bind(combat, harvester);
-            combat.strikeButton = hud.strikeButton;
-            combat.guardButton = hud.guardButton;
-            combat.skillButton = hud.skillButton;
-            combat.dodgeButton = hud.dodgeButton;
-            combat.lockButton = hud.lockButton;
-            harvester.harvestButton = hud.harvestButton;
+            var drag = hero.GetComponent<DragInput>();
+            combat.input = drag;
+            combat.harvester = harvester;
+            harvester.input = drag;
             harvester.combat = combat;
 
             // MECH-009 presentation and observability objects.

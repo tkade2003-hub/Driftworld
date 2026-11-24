@@ -14,6 +14,19 @@ namespace Driftworld
         public static MossHorn Current { get; private set; }
         public static bool Locked { get; private set; }
 
+        // Fight mode (MECH-009 as amended 2026-11-24, Vashon direction:
+        // "When in fight mode, there should be only swipe gestures like
+        // in Monster Hunter Now, no walking or running"). Fight mode is
+        // the Moss Horn AI engagement state: it is on while any living
+        // monster is out of Graze (it has noticed the hero, or has been
+        // damaged and not yet settled). The 22 m soft lock is NOT the
+        // signal: it is an aim and camera aid that is held across most
+        // of an arena, and gating locomotion on it would forbid walking
+        // almost everywhere a monster exists. While FightMode is on,
+        // DragInput returns no movement vector and classifies swipes
+        // as dodges; exploration keeps the full gesture scheme.
+        public static bool FightMode { get; private set; }
+
         // The aim target for an attack starting now: the locked target when
         // one is held, otherwise the nearest living monster inside the soft
         // acquire cone. Returns null when nothing is close enough to aim at.
@@ -47,9 +60,33 @@ namespace Driftworld
             return best;
         }
 
+        // Controls overhaul 2026-11-24: lock on is automatic and
+        // invisible. There is no lock button and no mode. Every frame
+        // the shared target is the nearest living monster inside
+        // acquire range, so AimTarget aims the hero's attacks at the
+        // creature he faces, FollowCamera frames it, and the HUD
+        // creature bar follows it, with nothing for the player to
+        // toggle. Locked now simply means "a soft target is held".
+        public static void SoftUpdate(Vector3 heroPos)
+        {
+            Current = Nearest(heroPos, Tuning.LockOn.acquire_range_m, null);
+            Locked = Current != null;
+            FightMode = false;
+            for (int i = 0; i < MossHorn.All.Count; i++)
+            {
+                MossHorn c = MossHorn.All[i];
+                if (c != null && !c.IsDefeated && c.CurrentState != MossHorn.State.Graze)
+                {
+                    FightMode = true;
+                    break;
+                }
+            }
+        }
+
         // Lock button behavior: unlock when locked with nothing to cycle
         // to, take the nearest when unlocked, cycle to the next nearest
-        // other monster when locked and one exists.
+        // other monster when locked and one exists. (Pre overhaul
+        // behavior, kept for reference; nothing calls it now.)
         public static void ToggleOrCycle(Vector3 heroPos)
         {
             if (!Locked || Current == null)

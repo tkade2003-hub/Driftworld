@@ -34,3 +34,47 @@ Fantasy: Your thumb is the trail. The hero goes where you pull, and the screen s
 
 ## Kill Criteria
 If AC-5 fails twice after tuning, the onboarding cue is redesigned (a guided first drag in the opening seconds). The drag scheme itself stands, by founder direction; what changes is how the game teaches it.
+
+## Addendum 2026-11-24: controls overhaul (supersedes the screen split)
+
+Directed by Vashon after playing the published combat build on his
+phone: he could not move the character, and he ordered all action
+buttons removed. Diagnosis on the shipped artifact (CDP touch probe,
+2026-11-24): an identical upward drag starting on the RIGHT half of
+the screen produced movement input 0.00 for its whole duration, while
+the same drag on the left half read 1.00. The split below is the bug:
+rule 4 and the edge cases that reference it are superseded.
+
+New scheme, one gesture stream covering the whole screen:
+
+- Drag (sustained press and move) steers the hero from anywhere on
+  screen, with the MECH-001 numbers unchanged (deadzone 12 px, max
+  drag 90 px, speed 4.2 m/s).
+- Tap (short press, peak drift at or under 26 px at 1080p width)
+  attacks; repeated taps chain the MECH-009 combo.
+- Still hold charges heavies (MECH-009) and, beside a defeated
+  creature, is the harvest hold (MECH-005).
+- Flick (fast swipe: at most 0.32 s, at least 55 px, average velocity
+  at least 700 px per s, all at 1080p width scale) dodges in the
+  flick direction through the MECH-009 dodge and iframe system.
+  A sustained drag can never misfire as a flick: the duration and
+  average velocity gates reject it no matter how fast it ends.
+- Glide boost (MECH-002) is a tap while gliding, anywhere now.
+- There are no on screen action buttons. The HUD is display only and
+  its canvas has no GraphicRaycaster, so no HUD element can intercept
+  a touch. Movement input values live in Tuning group Gestures.
+
+Proof standard raised by the same playtest: the acceptance harness
+must drive realistic touch sequences (touchstart, touchmove,
+touchend with real coordinates and timing) including drags that
+start on the right half and over the HUD area, in
+~/workspace/browser-test-scratch/touch_test.py.
+
+## Addendum 2026-11-24: locomotion is exploration only
+
+Under the MECH-009 fight mode addendum of the same date, drag
+movement applies only outside a fight. While a monster is engaged
+(Targeting.FightMode), MoveVector returns zero and the same drag is
+classified purely as a combat gesture (tap, charge hold, swipe).
+A fight starting or ending mid drag re anchors the gesture at the
+finger's current position, so neither state sticks.

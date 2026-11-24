@@ -16,11 +16,12 @@ namespace Driftworld
     [RequireComponent(typeof(PlayerController))]
     public class PlayerCombat : MonoBehaviour
     {
-        public HoldButton strikeButton;
-        public HoldButton guardButton;
-        public HoldButton skillButton;
-        public HoldButton dodgeButton;
-        public HoldButton lockButton;
+        // Controls overhaul 2026-11-24: combat reads the one gesture
+        // stream (tap strikes, still hold charges, flick dodges) instead
+        // of five on screen buttons. Guard, the special, and the old
+        // lock toggle survive on desktop keys only.
+        public DragInput input;
+        public Harvester harvester;
         public Vector3 respawnPoint;
 
         public float Health { get; private set; }
@@ -58,6 +59,7 @@ namespace Driftworld
         private AttackStep currentStep;
         private int currentComboIndex = -1;
         private float phaseTime;
+        private float stepInTime;
         private int swingIdCounter;
         private int currentSwingId;
         private int hitsDone;
@@ -71,6 +73,8 @@ namespace Driftworld
         private float dodgeTime;
         private Vector3 dodgeDir;
         private float dodgeCooldown;
+        private Vector3 dodgeDirOverride;
+        private bool hasDodgeDirOverride;
 
         // Weapon presentation: a code built pivot at the hero's right side.
         // Presentation only; it never creates hits (juice skill rule).
@@ -159,49 +163,62 @@ namespace Driftworld
         private bool StrikeDown()
         {
             bool key = Input.GetKey(KeyCode.J);
-            bool btn = strikeButton != null && strikeButton.IsHeld;
-            return key || btn;
+            bool gest = input != null && input.StrikeHeld;
+            return key || gest;
         }
 
         private bool StrikePressedEdge()
         {
             // GetKeyDown is event based: a tap shorter than one frame still
             // registers. A level based edge built on GetKey misses those
-            // taps entirely whenever the frame rate dips.
-            return Input.GetKeyDown(KeyCode.J) || (strikeButton != null && strikeButton.PressedThisFrame);
+            // taps entirely whenever the frame rate dips. The gesture
+            // stream carries the same edge for touches: its press flag is
+            // set on the touch begin frame.
+            return Input.GetKeyDown(KeyCode.J) || (input != null && input.StrikePressedThisFrame);
         }
 
         private bool StrikeReleasedEdge(out float heldSeconds)
         {
-            // Hold duration is judged in unscaled time, matching HoldButton,
-            // so a quick tap stays a light attack even when the frame rate
-            // drops and one frame of scaled deltaTime would cross the heavy
+            // Hold duration is judged in unscaled time for keys, and by
+            // the gesture's own event timestamps for touches, so a quick
+            // tap stays a light attack even when the frame rate drops
+            // and one frame of scaled deltaTime would cross the heavy
             // threshold on its own.
             heldSeconds = Time.unscaledTime - strikePressUnscaled;
             bool keyUp = Input.GetKeyUp(KeyCode.J);
-            bool btnUp = strikeButton != null && strikeButton.ReleasedThisFrame;
-            if (btnUp) heldSeconds = strikeButton.HeldSecondsAtRelease;
-            return keyUp || btnUp;
+            bool gestUp = input != null && input.StrikeReleasedThisFrame;
+            if (gestUp) heldSeconds = input.StrikeHeldSecondsAtRelease;
+            return keyUp || gestUp;
         }
 
+        // Guard and the special have no touch control anymore (controls
+        // overhaul 2026-11-24). Desktop keys only, for testing.
         private bool GuardHeld()
         {
-            return Input.GetKey(KeyCode.K) || (guardButton != null && guardButton.IsHeld);
+            return Input.GetKey(KeyCode.K);
         }
 
         private bool SkillPressed()
         {
-            return Input.GetKeyDown(KeyCode.L) || (skillButton != null && skillButton.PressedThisFrame);
+            return Input.GetKeyDown(KeyCode.L);
         }
 
+        // A dodge is the Space key or a flick. The flick carries its
+        // direction, stored as an override the next StartDodge consumes.
         private bool DodgePressed()
         {
-            return Input.GetKeyDown(KeyCode.Space) || (dodgeButton != null && dodgeButton.PressedThisFrame);
-        }
-
-        private bool LockPressed()
-        {
-            return Input.GetKeyDown(KeyCode.C) || (lockButton != null && lockButton.PressedThisFrame);
+            if (Input.GetKeyDown(KeyCode.Space)) return true;
+            if (input != null && input.FlickedThisFrame && controller != null)
+            {
+                Vector3 dir = controller.ScreenToWorldDir(input.FlickDirection);
+                if (dir.sqrMagnitude > 0.01f)
+                {
+                    dodgeDirOverride = dir.normalized;
+                    hasDodgeDirOverride = true;
+                }
+                return true;
+            }
+            return false;
         }
 
         private void Update()
@@ -226,8 +243,17 @@ namespace Driftworld
                 knockback = Vector3.MoveTowards(knockback, Vector3.zero, 14f * dt);
             }
 
-            Targeting.Validate(transform.position);
-            if (LockPressed() && !controller.IsGliding) Targeting.ToggleOrCycle(transform.position);
+            // Automatic invisible lock on: the soft target is refreshed
+            // every frame, no button and no toggle.
+            Targeting.SoftUpdate(transform.position);
+
+            // A press that turned into a drag or a flick is not a strike:
+            // drop the pending strike hold and any buffered tap.
+            if (input != null && input.StrikeCanceledThisFrame)
+            {
+                strikeHeld = false;
+                bufferedTap = false;
+            }
 
             IsGuarding = GuardHeld() && !controller.IsGliding && hitstunTimer <= 0f && CurrentPhase == Phase.Free;
 
@@ -239,7 +265,7 @@ namespace Driftworld
                 if (hitstunTimer <= 0f)
                 {
                     if (Time.time <= bufferedDodgeUntil) StartDodge();
-                    else if (Time.time <= bufferedStrikeUntil) StartComboStep(0);
+                    else if (Time.time <= bufferedStrikeUntil) { hasDodgeDirOverride = false; StartComboStep(0); }
                 }
                 return;
             }
@@ -254,20 +280,28 @@ namespace Driftworld
             if (DodgePressed()) { StartDodge(); AnimateWeapon(dt); return; }
             if (SkillPressed() && skillCooldown <= 0f) DoSpecial();
 
-            if (StrikePressedEdge())
+            // Beside a harvestable corpse, a still hold belongs to the
+            // harvest, not to a charged heavy: strike presses are ignored
+            // while the harvest context lasts, so the release after a
+            // harvest fires nothing.
+            bool harvestContext = harvester != null && harvester.Nearby != null;
+            if (!harvestContext)
             {
-                strikeHeld = true;
-                strikeHoldTime = 0f;
-                strikePressUnscaled = Time.unscaledTime;
-            }
-            if (strikeHeld)
-            {
-                strikeHoldTime += dt;
-                if (StrikeReleasedEdge(out float held))
+                if (StrikePressedEdge())
                 {
-                    strikeHeld = false;
-                    if (held >= Tuning.Combat.heavy_charge_s) StartHeavy(held);
-                    else StartComboStep(Time.time <= comboWindowUntil ? pendingComboIndex : 0);
+                    strikeHeld = true;
+                    strikeHoldTime = 0f;
+                    strikePressUnscaled = Time.unscaledTime;
+                }
+                if (strikeHeld)
+                {
+                    strikeHoldTime += dt;
+                    if (StrikeReleasedEdge(out float held))
+                    {
+                        strikeHeld = false;
+                        if (held >= Tuning.Combat.heavy_charge_s) StartHeavy(held);
+                        else StartComboStep(Time.time <= comboWindowUntil ? pendingComboIndex : 0);
+                    }
                 }
             }
             AnimateWeapon(dt);
@@ -320,6 +354,7 @@ namespace Driftworld
             currentStep = step;
             currentComboIndex = comboIndex;
             phaseTime = 0f;
+            stepInTime = 0f;
             bufferedTap = false;
             CurrentPhase = Phase.Startup;
         }
@@ -354,8 +389,18 @@ namespace Driftworld
             if (CurrentPhase == Phase.Startup || CurrentPhase == Phase.Active)
             {
                 // Step in: the move carries the hero, spread across the
-                // startup and active window.
-                body.Move(controller.HeadingForward * (currentStep.StepIn / stepWindow) * dt);
+                // startup and active window. The integration is clamped
+                // to the window itself: at low frame rates a single
+                // frame can span a whole phase, and integrating the
+                // full frame would carry the hero past the step's
+                // StepIn distance (measured at 8 fps: a 0.35 m step
+                // in travelled 0.70 m).
+                float stepDt = Mathf.Min(dt, Mathf.Max(stepWindow - stepInTime, 0f));
+                if (stepDt > 0f)
+                {
+                    body.Move(controller.HeadingForward * (currentStep.StepIn / stepWindow) * stepDt);
+                    stepInTime += stepDt;
+                }
             }
 
             if (CurrentPhase == Phase.Startup)
@@ -477,7 +522,10 @@ namespace Driftworld
             }
             Stamina -= Tuning.Dodge.stamina_cost;
             staminaRegenWait = Tuning.Combat.stamina_regen_delay_s;
-            Vector3 wish = controller.WishDirection();
+            // A flick dodges in the flick direction; a key dodge uses the
+            // current drag direction, falling back to backward.
+            Vector3 wish = hasDodgeDirOverride ? dodgeDirOverride : controller.WishDirection();
+            hasDodgeDirOverride = false;
             dodgeDir = wish.sqrMagnitude > 0.01f ? wish.normalized : -controller.HeadingForward;
             float yaw = Mathf.Atan2(dodgeDir.x, dodgeDir.z) * Mathf.Rad2Deg;
             controller.SetHeading(yaw);

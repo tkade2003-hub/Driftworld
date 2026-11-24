@@ -36,6 +36,14 @@ namespace Driftworld
             return CameraRelativeDirection(input.MoveVector());
         }
 
+        // World direction for a raw screen space direction. The flick
+        // dodge reads its direction through here so flicks and drags
+        // share one camera relative mapping.
+        public Vector3 ScreenToWorldDir(Vector2 screenDir)
+        {
+            return CameraRelativeDirection(screenDir);
+        }
+
         private CharacterController body;
         private DragInput input;
         private PlayerCombat combat;
@@ -71,12 +79,15 @@ namespace Driftworld
             if (gliderVisual != null) gliderVisual.gameObject.SetActive(false);
         }
 
-        private void OnEnable() { input.OnRightTap += HandleRightTap; }
-        private void OnDisable() { input.OnRightTap -= HandleRightTap; }
+        private void OnEnable() { input.OnTap += HandleTap; }
+        private void OnDisable() { input.OnTap -= HandleTap; }
 
-        private void HandleRightTap()
+        private void HandleTap()
         {
-            // MECH-002: while gliding, a right side tap spends the boost gauge.
+            // MECH-002: while gliding, a tap spends the boost gauge.
+            // (Controls overhaul 2026-11-24: the tap is anywhere now;
+            // on the ground the same gesture is the strike, which
+            // PlayerCombat reads from the same gesture stream.)
             if (!IsGliding || IsBoosting) return;
             if (BoostGauge < Tuning.Glide.boost_cost) return;
             BoostGauge -= Tuning.Glide.boost_cost;

@@ -2,8 +2,9 @@ using UnityEngine;
 
 namespace Driftworld
 {
-    // MECH-009 developer controls, keyboard side. The same actions are on
-    // the HUD debug panel for touch. Keys: 1 to 5 switch weapons, Z hitbox
+    // MECH-009 developer controls, keyboard only. (The HUD debug panel
+    // that mirrored these actions was removed in the 2026-11-24 controls
+    // overhaul; the HUD carries no buttons at all now.) Keys: 1 to 5 switch weapons, Z hitbox
     // volume, X hurtbox volumes, N damage numbers, F crit override (off),
     // R reset the engaged monster, T force stagger, Y force knockdown,
     // U force stun, I force enrage.
@@ -62,8 +63,32 @@ namespace Driftworld
             GetComponent<PlayerController>().SetHeading(Mathf.Atan2(toM.x, toM.z) * Mathf.Rad2Deg);
         }
 
+        // Debug staging, the exploration twin of StageFight: P resets
+        // the monster to a calm graze and puts the hero 20 m away from
+        // it, outside the 14 m notice range, so movement cases run in
+        // exploration state (fight mode off) even inside the sandbox
+        // arena. The hero faces away from the monster.
+        private void StageFar()
+        {
+            MossHorn m = Engaged();
+            if (m == null) return;
+            m.ResetFight();
+            Vector3 away = transform.position - m.transform.position;
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.01f) away = Vector3.back;
+            away.Normalize();
+            Vector3 pos = m.transform.position + away * 20f;
+            pos.y = m.transform.position.y + 0.3f;
+            var body = GetComponent<CharacterController>();
+            body.enabled = false;
+            transform.position = pos;
+            body.enabled = true;
+            GetComponent<PlayerController>().SetHeading(Mathf.Atan2(away.x, away.z) * Mathf.Rad2Deg);
+        }
+
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.P)) StageFar();
             if (Input.GetKeyDown(KeyCode.G)) StageFight(2.3f, false, true);
             if (Input.GetKeyDown(KeyCode.H)) StageFight(2.3f, false, false);
             if (Input.GetKeyDown(KeyCode.B)) StageFight(2.3f, true, false);

@@ -9,7 +9,10 @@ namespace Driftworld
     // parts fly to the hero while the loot counter climbs.
     public class Harvester : MonoBehaviour
     {
-        public HoldButton harvestButton;
+        // Controls overhaul 2026-11-24: the harvest hold is a still
+        // touch held beside the corpse, read from the gesture stream.
+        // The H key still works for desktop testing.
+        public DragInput input;
         public PlayerCombat combat;
 
         public MossHorn Nearby { get; private set; }
@@ -24,7 +27,7 @@ namespace Driftworld
         private void Update()
         {
             Nearby = FindNearby();
-            bool wantHold = Nearby != null && ((harvestButton != null && harvestButton.IsHeld) || Input.GetKey(KeyCode.H));
+            bool wantHold = Nearby != null && ((input != null && input.HeldStill) || Input.GetKey(KeyCode.H));
 
             if (wantHold)
             {
