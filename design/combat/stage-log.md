@@ -108,3 +108,35 @@
   timer.
 - Next: stage 3 run 2 verdict, then stage4_test.py on the plain URL,
   final rebuild, rezip, push.
+
+## Session close 2026-11-24: Stage 3 and 4 GREEN, release packaged
+
+- Stage 3 run 4: 18/18. AC-11 head break and tail sever with flagged
+  crossing events and an inert severed tail; GS short hold heavy at a
+  catalog charge level; GS L3 judged on the event phys field (Total
+  carries the 1.5 vulnerable state factor while the monster is
+  stunned, phys is always Power x step x part): exactly 99.0 on Head
+  (22 x 1.6 x 1.875 x 1.5); SnS Quick Slash; DB Twin Fang two hits on
+  one swing; AC-12 enrage at hp 691.71 and exhaustion from the enrage
+  timer at unchanged hp.
+- Stage 4 run 1: 7/7 on the plain URL. A common Moss Horn killed in
+  the main slice (hero at 46 hp), kills 0 to 1, harvest hold completed
+  (harvests 0 to 1), shards 0 to 10. MECH-006 and MECH-007 untouched.
+- Final release build through BuildSetup (Strip Engine Code OFF,
+  touch patch in index.html, diagnostics in): Build Finished, Result
+  Success, zero CS errors. All three suites rerun against the final
+  artifact itself: combat 24/24, stage 4 7/7, stage 3 18/18. AC-6
+  evaded on attempt 1 again in the final run.
+- Release zip: ~/workspace/driftworld/builds/driftworld-webgl-slice1.zip
+  (19 entries, index.html at the root, 11,266,608 bytes,
+  sha256 9f2734a400620fa1dfebe88bb1b35a4055b11b4500a1c91a57220a72ca6d8801).
+- Code pushed via push-files: 114 files (Assets, Packages,
+  ProjectSettings, design docs without the reference repo clones,
+  README, .gitignore) to tkade2003-hub/Driftworld main at commit
+  6e8789f747c0e9052003b9edb0f9e92758234e83. Remote PlayerCombat.cs
+  verified to contain both input fixes.
+- Remaining, parent only: swap the slice-1 release asset in the GitHub
+  web UI with the zip above and trigger a FRESH pages.yml workflow run
+  (never rerun old jobs). Then Vashon's phone check on the live Pages
+  build is the final sign off, per the standing rule that only the
+  shipped artifact on his device proves a build.
